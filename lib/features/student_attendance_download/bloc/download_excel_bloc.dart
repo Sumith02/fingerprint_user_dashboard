@@ -24,12 +24,14 @@ class DownloadExcelBloc extends Bloc<DownloadExcelEvent, DownloadExcelState> {
   ) async {
     try {
       emit(DownloadAttExcelLoadingState());
+
       if (event.unitId.isEmpty ||
           event.startDate.isEmpty ||
           event.endDate.isEmpty) {
         emit(DownloadAttExcelFailureState(message: "Enter all the Details."));
         return;
       }
+
       final box = await Hive.openBox("user_details");
       final String? userId = box.get("user_id");
       await box.close();
@@ -37,7 +39,7 @@ class DownloadExcelBloc extends Bloc<DownloadExcelEvent, DownloadExcelState> {
       if (userId == null) {
         emit(
           DownloadAttExcelFailureState(
-            message: "invalid user id please logout and login again.",
+            message: "Invalid user ID. Please logout and login again.",
           ),
         );
         return;
@@ -53,30 +55,54 @@ class DownloadExcelBloc extends Bloc<DownloadExcelEvent, DownloadExcelState> {
           "end_date": convertDateFormat(event.endDate),
         }),
       );
+
+
+      print("Sending request to ${HttpRoutes.excelDownload}");
+      print("Request Headers: ${HttpHead.jsonHeaders}");
+      print("Request Body: ${jsonEncode({
+        "unit_id": event.unitId,
+        "user_id": userId,  
+        "slot": event.slot,
+        "start_date": convertDateFormat(event.startDate),
+        "end_date": convertDateFormat(event.endDate),
+      })}");
+
+
+      // Debug print for response
+      print("Response Status Code: ${jsonResponse.statusCode}");
+      print("Response Body: ${jsonResponse.body}");
+
       if (jsonResponse.statusCode != 200) {
         emit(
           DownloadAttExcelFailureState(message: "Unable to Download Excel."),
         );
         return;
       }
+
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
       if (selectedDirectory == null) {
         emit(DownloadAttExcelFailureState(message: "Unable to store Excel."));
         return;
       }
+
       String filePath =
           "$selectedDirectory/Attendance${event.startDate}_and_${event.endDate}_time_${DateFormat("HHmmss").format(DateTime.now())}.xlsx";
+
       File file = File(filePath);
       await file.writeAsBytes(jsonResponse.bodyBytes);
+
       emit(
         DownloadAttExcelSuccessState(
-          message: "Download Successfull: $filePath",
+          message: "Download Successful: $filePath",
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      print("Exception occurred: $e");
+      print("Stack Trace: $stack");
+
       emit(
         DownloadAttExcelFailureState(
-          message: "Error Occured while Downloading Excel.",
+          message: "Error occurred while downloading Excel.",
         ),
       );
     }

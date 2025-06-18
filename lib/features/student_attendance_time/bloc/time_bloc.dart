@@ -30,24 +30,38 @@ class TimeBloc extends Bloc<TimeEvent, TimeState> {
           event.morningEnd.isEmpty ||
           event.eveningStart.isEmpty ||
           event.eveningEnd.isEmpty) {
-        emit(SetTimeFailureState(message: "please enter all the required fields."));
+        emit(
+          SetTimeFailureState(message: "please enter all the required fields."),
+        );
         return;
       }
 
       if (userId == null) {
-        emit(SetTimeFailureState(message: "invalid user id please logout and login again."));
+        emit(
+          SetTimeFailureState(
+            message: "invalid user id please logout and login again.",
+          ),
+        );
         return;
       }
+
+      print(
+        "Request Body: ${jsonEncode({"morning_start_time": event.morningStart.trim(), "morning_end_time": event.morningEnd.trim(), "afternoon_start_time": event.afternoonStart.trim(), "afternoon_end_time": event.afternoonEnd.trim(), "evening_start_time": event.eveningStart.trim(), "evening_end_time": event.eveningEnd.trim(), "user_id": userId})}",
+      );
 
       final jsonBody = jsonEncode({
         "morning_start_time": formatTimeToHHMM(event.morningStart.trim()),
         "morning_end_time": formatTimeToHHMM(event.morningEnd.trim()),
-        "afternoon_start_time":formatTimeToHHMM(event.afternoonStart.trim()),
+        "afternoon_start_time": formatTimeToHHMM(event.afternoonStart.trim()),
         "afternoon_end_time": formatTimeToHHMM(event.afternoonEnd.trim()),
         "evening_start_time": formatTimeToHHMM(event.eveningStart.trim()),
         "evening_end_time": formatTimeToHHMM(event.eveningEnd.trim()),
         "user_id": userId.trim(),
       });
+
+
+
+    
 
       final jsonResponse = await http.post(
         Uri.parse(HttpRoutes.setTime),
@@ -55,21 +69,27 @@ class TimeBloc extends Bloc<TimeEvent, TimeState> {
         headers: HttpHead.jsonHeaders,
       );
 
+
+    print("Status Code: ${jsonResponse.statusCode}");
+    print("Response Body: ${jsonResponse.body}");
+
+
       final response = jsonDecode(jsonResponse.body);
 
       if (jsonResponse.statusCode != 200) {
         emit(SetTimeFailureState(message: response["error"]));
         return;
       }
-      
+
       emit(SetTimeSuccessState(message: "Time setting successful."));
     } catch (e) {
       emit(SetTimeFailureState(message: "Unable to process the request."));
     }
   }
+
   String formatTimeToHHMM(String time) {
-  final format = DateFormat("hh:mm a");
-  DateTime parsedTime = format.parse(time);
-  return DateFormat("HH:mm").format(parsedTime);
-}
+    final format = DateFormat("hh:mm a");
+    DateTime parsedTime = format.parse(time);
+    return DateFormat("HH:mm").format(parsedTime);
+  }
 }
